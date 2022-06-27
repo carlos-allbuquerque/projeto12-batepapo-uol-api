@@ -41,7 +41,7 @@ server.get("/participants", async (req, res) => {
         client.close();
     }
     
-})
+});
 
 server.post("/participants", async (req, res) => {
     const {name} = req.body;
@@ -76,7 +76,7 @@ server.post("/participants", async (req, res) => {
         res.sendStatus(422);
         client.close();
     }
-})
+});
 
 server.get("/messages", async (req, res) => {
     let { limit } = req.query;
@@ -109,7 +109,7 @@ server.get("/messages", async (req, res) => {
         console.log(error);
         res.sendStatus(500);
     }
-})
+});
 
 server.post("/messages", async (req, res) => {
     const { user: from } = req.headers;
@@ -138,7 +138,7 @@ server.post("/messages", async (req, res) => {
     } catch (error) {
         res.status(500).send(error);
     }
-})
+});
 
 server.post("/status", async(req, res) => {
     const { user } = req.headers;
@@ -160,6 +160,33 @@ server.post("/status", async(req, res) => {
     } catch (error) {
         res.status(500).send(error);
     }
-})
+});
+
+setInterval(async () => {
+    try {
+        await client.connect();
+        const db = client.db("app");
+        const participants = db.collection("participants");
+        const messages = db.collection("messages");
+
+        const disconnectionTime = Date.now() - 10000;
+        const inactiveParticipants =  
+            await participants.find({lastStatus : { $lt: disconnectionTime }}).toArray();
+
+        inactiveParticipants.forEach(async ({ name }) => {
+            const time = dayjs(Date.now()).format("HH:mm:ss");
+            await messages.insertOne({
+                from: name,
+                to: "Todos",
+                text: "sai da sala...",
+                type: "status",
+                time,
+            });
+            await participants.deleteOne({ name });
+        });
+    } catch (error) {
+        res.status(500).send(error);
+    }
+}, 15000);
 
 server.listen(process.env.PORTA);
