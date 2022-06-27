@@ -58,12 +58,11 @@ server.post("/participants", async (req, res) => {
         const db = client.db("app");
         const participants = db.collection("participants");
         const messages = db.collection("messages");
-
         const message = {from: name,
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status', 
-            time: `${dayjs().hour()}:${dayjs().minute()}:${dayjs().second()}`
+            time: dayjs(Date.now()).format("HH:mm:ss")
         }
         const alreadyExists = await participants.findOne({ name: name }) 
         if (alreadyExists) {
@@ -116,7 +115,8 @@ server.post("/messages", async (req, res) => {
     const message = {
         ...req.body,
         from: from,
-        time: `${dayjs().hour()}:${dayjs().minute()}:${dayjs().second()}`};
+        time: dayjs(Date.now()).format("HH:mm:ss")
+    };
 
     const validation =  messageSchema.validate(message, { abortEarly: false});
     const { error } = validation;
@@ -184,7 +184,7 @@ setInterval(async () => {
                 to: "Todos",
                 text: "sai da sala...",
                 type: "status",
-                time,
+                time: time
             });
             await participants.deleteOne({ name });
         });
