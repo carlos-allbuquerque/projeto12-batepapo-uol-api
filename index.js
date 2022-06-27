@@ -94,7 +94,6 @@ server.get("/messages", async (req, res) => {
     try {
         await client.connect();
         const db = client.db("app");
-        const participants = db.collection("participants");
         const messages = db.collection("messages");
 
         let messagesArray = await messages.find({}).toArray();
@@ -136,6 +135,28 @@ server.post("/messages", async (req, res) => {
         await messages.insertOne(message);
 
         res.sendStatus(201); 
+    } catch (error) {
+        res.status(500).send(error);
+    }
+})
+
+server.post("/status", async(req, res) => {
+    const { user } = req.headers;
+
+    try {
+        await client.connect();
+        const db = client.db("app");
+        const participants = db.collection("participants");
+
+        const participantExists = await participants.findOne({ name: user })
+        if (!participantExists) return res.sendStatus(404);
+
+        await participants.updateOne(
+            { name: user },
+            { $set: { lastStatus: Date.now() } }
+        );
+
+        res.sendStatus(200);
     } catch (error) {
         res.status(500).send(error);
     }
