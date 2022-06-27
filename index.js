@@ -15,10 +15,19 @@ const participantSchema = joi.object({
     lastStatus: joi.number().required()
 })
 
+const messageSchema = joi.object({
+    to: joi.string().empty().required(),
+    text: joi.string().empty().required(),
+    type: joi.string().equal("private_message", "message").required(),
+    from: joi.string().empty().required(),
+    time: joi.string()
+})
+
 const server = express(); 
 
 server.use(cors());
 server.use(express.json());
+
 
 server.get("/participants", async (req, res) => {
     try {
@@ -100,6 +109,35 @@ server.get("/messages", async (req, res) => {
     } catch (error) {
         console.log(error);
         res.sendStatus(500);
+    }
+})
+
+server.post("/messages", async (req, res) => {
+    const { user: from } = req.headers;
+    const message = {...req.body, from: from, time: `${dayjs().hour()}:${dayjs().minute()}:${dayjs().second()}`};
+    const validation =  messageSchema.validate(message, { abortEarly: false});
+    const { error } = validation;
+    if (error) {
+        const messages = error.details.map(item => item.message);
+        res.status(422).send(messages);
+        return;
+    }
+    try {
+        await client.connect();
+        const db = client.db("app");
+        const participants = db.collection("participants");
+        const messages = db.collection("messages");
+
+        const participantExists = await participants.findOne({name: from});
+        if (!participantExists) {
+            res.sendStatus(404);
+            return;
+        }
+        await messages.insertOne(message);
+
+        res.sendStatus(201); 
+    } catch (error) {
+        res.status(500).send(error);
     }
 })
 
