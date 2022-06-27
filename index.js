@@ -15,26 +15,26 @@ const participantSchema = joi.object({
     lastStatus: joi.number().required()
 })
 
-const server = express();
+const server = express(); 
 
 server.use(cors());
 server.use(express.json());
 
-server.get("/participantes", async (req, res) => {
+server.get("/participants", async (req, res) => {
     try {
         await client.connect();
         const db = client.db("app");
-        const participants = db.collection("uolCollection");
-
+        const participants = db.collection("participants");
         const participantsArray = await participants.find({}).toArray();
         res.send(participantsArray);
     } catch (error){
         res.status(500).send(error);
+        client.close();
     }
     
 })
 
-server.post("/participantes", async (req, res) => {
+server.post("/participants", async (req, res) => {
     const {name} = req.body;
     const participant = {name, lastStatus: Date.now()};
     const validation =  participantSchema.validate(participant, { abortEarly: false});
@@ -59,14 +59,47 @@ server.post("/participantes", async (req, res) => {
         const alreadyExists = await participants.findOne({ name: name }) 
         if (alreadyExists) {
             res.sendStatus(409);
-            return;
         } 
         await participants.insertOne(participant);
         await messages.insertOne(message);
-        res.sendStatus(201)
+        res.sendStatus(201);
     } catch {
-        res.sendStatus(422)
-        client.close()
+        res.sendStatus(422);
+        client.close();
+    }
+})
+
+server.get("/messages", async (req, res) => {
+    let { limit } = req.query;
+    limit = parseInt(limit)
+    const { user: from }  = req.headers;
+
+    function filterMessage(message, participantName) {
+        const {from, to, type} = message;
+
+        const related = 
+            from === participantName || to === participantName || to === "Todos";
+
+        return related;
+    }
+    try {
+        await client.connect();
+        const db = client.db("app");
+        const participants = db.collection("participants");
+        const messages = db.collection("messages");
+
+        let messagesArray = await messages.find({}).toArray();
+
+        messagesArray = messagesArray.filter((message) => 
+            filterMessage(message, from)
+        );
+
+        if (limit && limit !== NaN) return res.send(messagesArray.slice(-limit));
+
+        res.send(messagesArray);
+    } catch (error) {
+        console.log(error);
+        res.sendStatus(500);
     }
 })
 
