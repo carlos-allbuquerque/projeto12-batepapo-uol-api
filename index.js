@@ -72,9 +72,9 @@ server.post("/participants", async (req, res) => {
         await participants.insertOne(participant);
         await messages.insertOne(message);
         res.sendStatus(201);
+        return;
     } catch {
         res.sendStatus(422);
-        client.close();
     }
 });
 
@@ -113,7 +113,11 @@ server.get("/messages", async (req, res) => {
 
 server.post("/messages", async (req, res) => {
     const { user: from } = req.headers;
-    const message = {...req.body, from: from, time: `${dayjs().hour()}:${dayjs().minute()}:${dayjs().second()}`};
+    const message = {
+        ...req.body,
+        from: from,
+        time: `${dayjs().hour()}:${dayjs().minute()}:${dayjs().second()}`};
+
     const validation =  messageSchema.validate(message, { abortEarly: false});
     const { error } = validation;
     if (error) {
