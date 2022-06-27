@@ -50,7 +50,7 @@ server.post("/participants", async (req, res) => {
     const { error } = validation;
     if (error) {
         const messages = error.details.map(item => item.message);
-        res.status(402).send(messages);
+        res.status(422).send(messages);
         return;
     }
     try {
@@ -68,13 +68,13 @@ server.post("/participants", async (req, res) => {
         const alreadyExists = await participants.findOne({ name: name }) 
         if (alreadyExists) {
             res.sendStatus(409);
+            return;
         } 
         await participants.insertOne(participant);
         await messages.insertOne(message);
         res.sendStatus(201);
-        return;
     } catch {
-        res.sendStatus(422);
+        res.sendStatus(500);
     }
 });
 
