@@ -5,13 +5,10 @@ import dotenv from "dotenv";
 import joi from "joi";
 import dayjs from "dayjs";
 
-
-
 dotenv.config();
 
 const client = new MongoClient(process.env.MONGO_CONNECT);
 let db;
-
 
 const participantSchema = joi.object({ 
     name: joi.string().empty().required(),
@@ -22,6 +19,20 @@ const server = express();
 
 server.use(cors());
 server.use(express.json());
+
+server.get("/participantes", async (req, res) => {
+    try {
+        await client.connect();
+        const db = client.db("app");
+        const participants = db.collection("uolCollection");
+
+        const participantsArray = await participants.find({}).toArray();
+        res.send(participantsArray);
+    } catch (error){
+        res.status(500).send(error);
+    }
+    
+})
 
 server.post("/participantes", async (req, res) => {
     const {name} = req.body;
@@ -38,6 +49,7 @@ server.post("/participantes", async (req, res) => {
         const db = client.db("app");
         const participants = db.collection("participants");
         const messages = db.collection("messages");
+
         const message = {from: name,
             to: 'Todos',
             text: 'entra na sala...',
@@ -49,7 +61,6 @@ server.post("/participantes", async (req, res) => {
             res.sendStatus(409);
             return;
         } 
-
         await participants.insertOne(participant);
         await messages.insertOne(message);
         res.sendStatus(201)
